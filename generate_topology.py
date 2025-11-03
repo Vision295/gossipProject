@@ -2,7 +2,7 @@ import json
 from gns3fy import Link, Node
 from gns3fy import Gns3Connector, Project
 import ipaddress
-
+from typing import Set
 from enum import Enum
 
 class TopologyType(Enum):
@@ -11,22 +11,47 @@ class TopologyType(Enum):
       BUS = 2
       CLUSTERING = 3
 
+PortNumber = int # TODO : define some bounds
+NodeDict = dict # TODO : define it better
+def get_all_used_ports(node:Node, project:Project) -> None | Set[PortNumber]:
+      """gets all the ports connected to a node from project (requires the project to be openned)
 
-
-def get_free_port(node, project):
-
+      :param node: Node
+      :type node: Node
+      :param project: Project
+      :type project: Project
+      :return: a set of numbers representing the port number
+      :rtype: None | Set[Portnumber]
+      """
       used_ports = set()
       project.get_links()
       for link in project.links:
+            if not link       : return None
+            if not link.nodes : return None
             for n in link.nodes:
                   if n["node_id"] == node.node_id:
                         used_ports.add(n["port_number"])
+      return used_ports
+
+def get_free_port(node:Node, project:Project) -> None | PortNumber:
+      """get the first free port (resquires the project to be open)
+
+      :param node: node from a project 
+      :type node: Node
+      :param project: project openned
+      :type project: Project
+      :return: number of the first available port
+      :rtype: None | PortNumber
+      """
+      if not node.ports: return None
+      used_ports = get_all_used_ports(node, project)
       for p in node.ports:
             if p["port_number"] not in used_ports:
                   return p  # first free port
+      # if no port available
       return None
 
-def get_link_template_base(server, project_id, filter:None | dict=None):
+def get_link_template_base(server:Gns3Connector, project_id, filter:None | dict=None) -> NodeDict:
       return {
             "project_id":project_id,
             "connector": server,
