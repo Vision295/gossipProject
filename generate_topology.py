@@ -22,19 +22,19 @@ def get_free_port(node, project):
             return p  # first free port
     return None
 
-def get_link_template_base(server, filter:None | dict=None):
+def get_link_template_base(server, project_id, filter:None | dict=None):
       return {
-            "project_id": "58a2ce59-b68a-434f-91bc-ddc3fa642c63",
+            "project_id":project_id,
             "connector": server,
             "link_type":"ethernet",  
             "link_id":None, 
             "filters": filter
       }
 
-def get_node_template_base(name, server):
+def get_node_template_base(server, project_id, name):
       if name == "Ethernet switch" :
             return {
-                  "project_id": "58a2ce59-b68a-434f-91bc-ddc3fa642c63",
+                  "project_id":project_id,
                   "connector": server,
                   "template": name,
                   "locked": False,
@@ -47,7 +47,7 @@ def get_node_template_base(name, server):
             }
       else:
             return {
-                  "project_id": "58a2ce59-b68a-434f-91bc-ddc3fa642c63",
+                  "project_id":project_id,
                   "connector": server,
                   "template": name,
                   "locked": False,
@@ -55,13 +55,15 @@ def get_node_template_base(name, server):
       
 class Topology:
 
-      def __init__(self, type:TopologyType, intent:dict) -> None:
+      def __init__(self, type:TopologyType, intent:dict, name:str) -> None:
             server = Gns3Connector("http://localhost:3080")
-            self.project = Project(name="gossip1test", connector=server)
+            self.project = Project(name=name, connector=server)
             self.project.get()  # fetch project data from the server
-            self.vpc_template_base = get_node_template_base("VPCS", server)
-            self.switch_tempalte_base = get_node_template_base("Ethernet switch", server)
-            self.link_template_base = get_link_template_base(server)
+            self.project_id = self.project.project_id
+
+            self.vpc_template_base = get_node_template_base(server, self.project_id, "VPCS")
+            self.switch_tempalte_base = get_node_template_base(server, self.project_id, "Ethernet switch")
+            self.link_template_base = get_link_template_base(server, self.project_id)
             self.intent = intent
 
             self.switchs, self.pcs, self.links = [], [], []
@@ -149,5 +151,5 @@ class Topology:
 with open("intent.json", "r") as file:
     data = json.load(file)  # parses JSON into a Python dict or list
 
-topo = Topoplogy(TopologyType.FULL_MESH, data)
+topo = Topology(TopologyType.FULL_MESH, data, "test2")
 
