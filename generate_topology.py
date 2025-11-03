@@ -12,16 +12,16 @@ class TopologyType(Enum):
 
 # --- Helper: get first free port of a node ---
 def get_free_port(node, project):
-    used_ports = set()
-    project.get_links()
-    for link in project.links:
-        for n in link.nodes:
-            if n["node_id"] == node.node_id:
-                used_ports.add(n["port_number"])
-    for p in node.ports:
-        if p["port_number"] not in used_ports:
-            return p  # first free port
-    return None
+      used_ports = set()
+      project.get_links()
+      for link in project.links:
+            for n in link.nodes:
+                  if n["node_id"] == node.node_id:
+                        used_ports.add(n["port_number"])
+      for p in node.ports:
+            if p["port_number"] not in used_ports:
+                  return p  # first free port
+      return None
 
 def get_link_template_base(server, project_id, filter:None | dict=None):
       return {
@@ -64,7 +64,7 @@ class Topology:
             self.intent = intent
 
             self.switch_name  = "Ethernet switch"     if "Ethernet switch"    in self.intent else None
-            self.pc_name      = "VPCS"                if "VPCS"               in self.intent else None
+            self.pc_name      = "gossip_base"         if "gossip_base"        in self.intent else None
 
             self.pc_template_base         = get_node_template_base(server, self.project_id, self.pc_name) 
             self.switch_template_base     = get_node_template_base(server, self.project_id, self.switch_name)
@@ -79,7 +79,7 @@ class Topology:
                  self.gen_full_mesh()
                  self.gen_retrieval_map()
 
-      def add_switch(self, i, j, all_clusters):
+      def add_switch(self, i, all_clusters):
             addition = {
                   "name": f"S{i}",
                   "x": all_clusters[i][0] + 100,
@@ -149,7 +149,7 @@ class Topology:
             for i in range(self.switch_count):
                   self.pcs.append([])
                   self.links.append([])
-                  self.add_switch(i, j, all_clusters)
+                  self.add_switch(i, all_clusters)
             
             self.links.append([])
             self.project.get_links()
@@ -175,5 +175,5 @@ class Topology:
 with open("intent.json", "r") as file:
     data = json.load(file)  # parses JSON into a Python dict or list
 
-topo = Topology(TopologyType.FULL_MESH, data, "test2")
+topo = Topology(TopologyType.FULL_MESH, data, "testdocker")
 
