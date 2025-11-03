@@ -1,5 +1,5 @@
 {
       "Ethernet switch": 1,
-      "gossip_base": 5,
+      "gossip_env": 5,
       "ip_range": "172.19.0.100/24"
 }

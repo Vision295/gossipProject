@@ -1,6 +1,7 @@
 import json
 from gns3fy import Link, Node
 from gns3fy import Gns3Connector, Project
+import ipaddress
 
 from enum import Enum
 
@@ -10,8 +11,10 @@ class TopologyType(Enum):
       BUS = 2
       CLUSTERING = 3
 
-# --- Helper: get first free port of a node ---
+
+
 def get_free_port(node, project):
+
       used_ports = set()
       project.get_links()
       for link in project.links:
@@ -54,7 +57,7 @@ def get_node_template_base(server, project_id, name):
                   "locked": False,
             }
       
-class Topology:
+class TopologyGenerator:
 
       def __init__(self, type:TopologyType, intent:dict, name:str) -> None:
             server = Gns3Connector("http://localhost:3080")
@@ -64,24 +67,60 @@ class Topology:
             self.intent = intent
 
             self.switch_name  = "Ethernet switch"     if "Ethernet switch"    in self.intent else None
-            self.pc_name      = "gossip_base"         if "gossip_base"        in self.intent else None
+            self.pc_name      = "gossip_env"          if "gossip_env"         in self.intent else None
 
             self.pc_template_base         = get_node_template_base(server, self.project_id, self.pc_name) 
             self.switch_template_base     = get_node_template_base(server, self.project_id, self.switch_name)
             self.link_template_base       = get_link_template_base(server, self.project_id)
 
-            self.switch_count = self.intent[self.switch_name]
-            self.pc_count     = self.intent[self.pc_name]
+            self.total_number_pc          = self.intent[self.pc_name]
+            self.total_number_switch      = self.intent[self.switch_name]
+            self.switch_count = 0
+            self.pc_count     = 0
 
             self.switchs, self.pcs, self.links = [], [], []
+            self.neighborListToStr = ""
+            self.get_ip_list()
 
             if type == TopologyType.FULL_MESH:
                  self.gen_full_mesh()
                  self.gen_retrieval_map()
 
+      ### TODO : define envformat
+      def get_ip_list(self):
+            count = self.intent.get(self.pc_name, 0)
+            ip_range = self.intent.get("ip_range", None)
+            
+            if ip_range is None or count <= 0 : return ""
+            
+            network = ipaddress.ip_network(ip_range, strict=False)
+            start_ip = network.network_address  # first IP in the network
+            ip_list = [str(start_ip + i) for i in range(count)]
+            
+            self.neighborListToStr = ",".join(ip_list)
+
+
+      def get_docker_properties(self):
+            return {
+                  "properties": {
+                        "environment": "\n".join([
+                        f"PACKET_SIZE=1500",
+                        f"NODE_IDX={self.pc_count}",
+                        "PORT=8300",
+                        f"NEIGHBORS={self.neighborListToStr}",
+                        "MAX_BLOCK=5",
+                        "BLOCK_GEN_TIME=1000",
+                        "PULL_INTERVAL=4000",
+                        'BLOCK_FILE="block_50KB"',
+                        "ONLY_PUSH=false",
+                        "F_OUT=1"
+                        ])
+                  }
+            }
+
       def add_switch(self, i, all_clusters):
             addition = {
-                  "name": f"S{i}",
+                  "name": f"S{self.switch_count}",
                   "x": all_clusters[i][0] + 100,
                   "y": all_clusters[i][1] + 80, 
             }
@@ -90,22 +129,25 @@ class Topology:
                   **addition,
             ))
             self.switchs[-1].create()
-            for j in range(self.pc_count // self.switch_count):
+            self.switch_count += 1
+            for j in range(self.total_number_pc // self.total_number_switch):
                   self.add_pc(i, j, all_clusters)
                   self.add_pc_link(i, j)
 
 
       def add_pc(self, i, j, all_clusters):
             node_addition = {
-                  "name": f"PC{i*10+j}",
+                  "name": f"PC{self.pc_count}",
                   "x": all_clusters[i][0] + 40 * (j%5),
                   "y": all_clusters[i][1] + 150 * (j%2), 
             }
             self.pcs[i].append(Node(
+                  **node_addition,
+                  **self.get_docker_properties(),
                   **self.pc_template_base,
-                  **node_addition
             ))
             self.pcs[i][-1].create()
+            self.pc_count += 1
       
       def add_pc_link(self, i, j):
             link_addition = {
@@ -123,6 +165,8 @@ class Topology:
       def add_switch_link(self, a, b, sa, sb):
             pa = get_free_port(sa, self.project)
             pb = get_free_port(sb, self.project)
+            if not pa: return
+            if not pb: return
             link_addition = {
                   "nodes":[
                         {"node_id": sa.node_id, "adapter_number": pa["adapter_number"], "port_number": pa["port_number"]},
@@ -146,7 +190,7 @@ class Topology:
                   [600, 200], [600, 400], [600, 600],
                   [400, 800],
             ]
-            for i in range(self.switch_count):
+            for i in range(self.total_number_switch):
                   self.pcs.append([])
                   self.links.append([])
                   self.add_switch(i, all_clusters)
@@ -175,5 +219,5 @@ class Topology:
 with open("intent.json", "r") as file:
     data = json.load(file)  # parses JSON into a Python dict or list
 
-topo = Topology(TopologyType.FULL_MESH, data, "testdocker")
+topo = TopologyGenerator(TopologyType.FULL_MESH, data, "testdocker")
 
