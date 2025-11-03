@@ -75,15 +75,9 @@ class Topology:
             ### generate 10 pcs connected to one switch 
             ### connect all switches in a full mesh
             all_clusters = [
-                  [200, 200],
-                  [200, 400],
-                  [200, 600],
-                  [400, 200],
-                  [400, 400],
-                  [400, 600],
-                  [600, 200],
-                  [600, 400],
-                  [600, 600],
+                  [200, 200], [200, 400], [200, 600],
+                  [400, 200], [400, 400], [400, 600],
+                  [600, 200], [600, 400], [600, 600],
                   [400, 800],
             ]
             for i in range(self.intent["switch"]):
