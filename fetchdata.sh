@@ -1,44 +1,87 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Folder to save logs
+# ----------------------------
+# Parse arguments
+# ----------------------------
+inConsole="false"
+
+# Support either --inConsole=True/False or positional argument true/false
+if [[ $# -ge 1 ]]; then
+    arg="$1"
+    if [[ "$arg" =~ ^(--inConsole=)?[Tt]rue$ ]]; then
+        inConsole="true"
+    fi
+fi
+
+# ----------------------------
+# Setup
+# ----------------------------
 DEST_DIR="$HOME/test"
 mkdir -p "$DEST_DIR"
 echo "Logs will be saved in $DEST_DIR"
 
-# Get all containers (active and inactive)
 containers=$(docker ps -aq)
 echo "Found containers: $containers"
 
-for cid in $containers; do
-    echo "Processing container $cid..."
+# ----------------------------
+# MODE 1: default (from mounted volumes)
+# ----------------------------
+if [[ "$inConsole" == "false" ]]; then
+    echo "--- Running in MOUNT MODE ---"
+    for cid in $containers; do
+        echo "Processing container $cid..."
 
-    # Inspect the container to find mounted volumes
-    docker inspect "$cid" --format '{{range .Mounts}}{{.Source}}:{{.Destination}}{{"\n"}}{{end}}' | while IFS= read -r mount; do
-        [[ -z "$mount" ]] && continue
-        host_path="${mount%%:*}"
-        container_path="${mount#*:}"
-        echo "Found mount: Host=$host_path -> Container=$container_path"
+        CONTAINER_LOG="/gns3volumes/app/logs/log.txt"
+        CONTAINER_CONFIG="/gns3volumes/app/logs/push_config.toml"
 
-        # Check for log and config files inside the host path
-        log_file="$host_path/log.txt"
-        config_file="$host_path/push_config.toml"
+        # Check if both files exist inside container
+        log_exists=$(docker exec "$cid" sh -c "[ -f $CONTAINER_LOG ] && echo yes || echo no" || echo no)
+        config_exists=$(docker exec "$cid" sh -c "[ -f $CONTAINER_CONFIG ] && echo yes || echo no" || echo no)
 
-        echo "Checking for files: $log_file and $config_file"
-        if [[ -f "$log_file" && -f "$config_file" ]]; then
-            # Extract NODE_IDX from push_config.toml
-            node_idx=$(grep -E '^NODE_IDX' "$config_file" | awk -F'=' '{gsub(/ /,"",$2); print $2}')
-            if [[ -n "$node_idx" ]]; then
-                echo "Found NODE_IDX=$node_idx in $config_file"
-                cp "$log_file" "$DEST_DIR/${node_idx}.txt"
-                echo "Copied $log_file -> $DEST_DIR/${node_idx}.txt"
-            else
-                echo "NODE_IDX not found in $config_file"
-            fi
+        if [[ "$log_exists" == "yes" && "$config_exists" == "yes" ]]; then
+            echo "Found log.txt and push_config.toml in container $cid"
+
+            node_idx=$(docker exec "$cid" sh -c "grep -E '^NODE_IDX' $CONTAINER_CONFIG | awk -F'=' '{gsub(/ /,\"\",\$2); print \$2}'" || true)
+            [[ -z "$node_idx" ]] && node_idx="$cid"
+
+            docker cp "$cid:$CONTAINER_LOG" "$DEST_DIR/${node_idx}_log.txt"
+
+            echo "Copied data from container $cid -> $DEST_DIR/${node_idx}_*.txt"
         else
-            echo "Files not found in this mount."
+            echo "Files not found in container $cid: log=$log_exists, config=$config_exists"
         fi
     done
-done
 
-echo "All logs collected in $DEST_DIR"
+# ----------------------------
+# MODE 2: in-console (live reading)
+# ----------------------------
+else
+    echo "--- Running in CONSOLE MODE ---"
+    for cid in $containers; do
+        echo "Processing container $cid..."
+
+        # Paths inside container
+        LOG_PATH="/app/logs/log.txt"
+        CONFIG_PATH="/app/push_config.toml"
+
+        # Check if both files exist in container
+        log_exists=$(docker exec "$cid" sh -c "[ -f $LOG_PATH ] && echo yes || echo no" || echo no)
+        config_exists=$(docker exec "$cid" sh -c "[ -f $CONFIG_PATH ] && echo yes || echo no" || echo no)
+
+        if [[ "$log_exists" == "yes" && "$config_exists" == "yes" ]]; then
+            echo "Found log.txt and push_config.toml in container $cid"
+
+            node_idx=$(docker exec "$cid" sh -c "grep -E '^NODE_IDX' $CONFIG_PATH | awk -F'=' '{gsub(/ /,\"\",\$2); print \$2}'" || true)
+            [[ -z "$node_idx" ]] && node_idx="$cid"
+
+            docker exec "$cid" cat "$LOG_PATH" > "$DEST_DIR/${node_idx}_log.txt"
+
+            echo "Copied live data from container $cid -> $DEST_DIR/${node_idx}_*.txt"
+        else
+            echo "Files not found in container $cid: log=$log_exists, config=$config_exists"
+        fi
+    done
+fi
+
+echo "--- All logs and configs collected in $DEST_DIR ---"
