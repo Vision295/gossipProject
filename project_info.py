@@ -4,7 +4,7 @@ from gns3fy import Gns3Connector, Project
 gns3_server = Gns3Connector("http://localhost:3080")
 
 # 2️⃣ Get your project by name (or use project_id)
-project = Project(name="my_project", connector=gns3_server)
+project = Project(name="test2", connector=gns3_server)
 project.get()  # fetch project data from the server
 
 # 3️⃣ Load all nodes in this project
