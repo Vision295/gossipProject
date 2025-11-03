@@ -1,5 +1,5 @@
 {
-      "switch": 10,
-      "pcs": 50,
+      "Ethernet switch": 10,
+      "VPCS": 50,
       "ip_range": "172.19.0.100/24"
 }

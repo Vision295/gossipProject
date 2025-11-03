@@ -42,6 +42,6 @@ def safe_cleanup_project(project):
 # Example usage
 if __name__ == "__main__":
     server = Gns3Connector("http://localhost:3080")
-    project = Project(name="gossip1test", connector=server)
+    project = Project(name="test2", connector=server)
     project.get()
     safe_cleanup_project(project)
