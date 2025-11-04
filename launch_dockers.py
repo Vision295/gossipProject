@@ -1,41 +1,29 @@
 import docker
 from gns3fy import Gns3Connector, Project, Node
 
+def get_id(nameId:str) -> str:
+      """get id from retriever map
 
-# 1️⃣ Connect to your GNS3 server
-server = Gns3Connector("http://localhost:3080")
-
-# 2️⃣ Load your project
-project = Project(name="testdocker", connector=server)
-project.get()
-
-data = {
-      "name": "gossip_env",
-      "template_id": "d006d8f3-6408-4d44-867c-953cca5422d3",
-      "x": 100,
-      "y": 100,
-      "compute_id": "local",  # default GNS3 compute
-      "properties": {"environment": "ENV1=1"}
-}
-
-def create_node(project, server, data):
-
-      # 5️⃣ Create the node
-      new_node = Node(project_id=project.project_id, connector=server, **data)
-      new_node.create()
-      print(f"✅ Created node '{new_node.name}' with ID: {new_node.node_id}")
-      return new_node
-
-
-
-def get_id(nameId:str):
+      :param nameId: name and id in a string 
+      :type nameId: str
+      :return: the id
+      :rtype: str
+      """
       return nameId.split(":")[1].strip()
 
 class DockerEdit:
+      """class to manage every docker edits (should be joinned with load_simulation later)"""
 
-      def __init__(self, name:str, retriever:dict) -> None:
+      def __init__(self, project_name:str, retriever:dict) -> None:
+            """basic init like in topology + docker initialization
+
+            :param project_name: project name
+            :type project_name: str
+            :param retriever: retriever dict from json
+            :type retriever: dict
+            """
             server = Gns3Connector("http://localhost:3080")
-            self.project = Project(name=name, connector=server)
+            self.project = Project(name=project_name, connector=server)
             self.project.get() 
             self.project_id = self.project.project_id
             self.retriever = retriever
@@ -44,6 +32,8 @@ class DockerEdit:
             self.dockerContainers   = []
 
       def retrieve_topology(self):
+            """retrieve from the generated topology and find the docker containers to execute 
+            some commands later on"""
             self.switches     = []
             self.pcs          = []
             for switch, pcList in self.retriever.items():
@@ -66,9 +56,3 @@ class DockerEdit:
             exec_result = container.exec_run(command)
             """
             ...
-
-
-
-
-node = create_node(project, server, data)
-node.get()
