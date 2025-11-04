@@ -3,21 +3,30 @@ from docker.models.containers import Container
 import time
 import os
 import re
+import json
 
-# Read current number
-try:
-    with open("expCount.txt", "r") as f:
-        last = f.read().strip()
-        EXP_NUMBER = int(last) + 1 if last else 1
-except FileNotFoundError:
-    EXP_NUMBER = 1  # File doesn't exist yet
+def new_experience(experience_type:str) -> dict:
+      """we consider the count of all experiences to differenciate the fetches of 
+      data in different directories
+      
+      :param experience_type: the type of experience we consider
+      :type str: String
+      :return: the full data of all tracks updated
+      :rtype: dict
+      """
 
-# Write updated number
-with open("expCount.txt", "w") as f:
-    f.write(str(EXP_NUMBER))
+      # Read current number and update it
+      with open("exp_count.json", "r") as f:
+            data = json.load(f)
+            data[experience_type] += 1
+            json.dump(data, f)
+            return data
 
+experiences = new_experience("full_mesh")
+
+# retrieves the results 
 home = "/run/media/theophile/Windows/Users/theop/Documents/_Perso/_Etudes/_INSA/_4TC1/networksProject/code/results"
-DEST_DIR = os.path.expanduser(home + f"/{EXP_NUMBER}") 
+DEST_DIR = os.path.expanduser(home + f"/{experiences['full_mesh']}") 
 os.makedirs(DEST_DIR, exist_ok=True)
 
 def run_gossip_sequence(wait_seconds: int = 60):
