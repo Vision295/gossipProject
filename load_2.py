@@ -1,3 +1,4 @@
+from tracemalloc import start
 import docker
 from docker.models.containers import Container
 import time
@@ -30,42 +31,23 @@ home = "/run/media/theophile/Windows/Users/theop/Documents/_Perso/_Etudes/_INSA/
 DEST_DIR = os.path.expanduser(home + f"/{experiences['full_mesh']}") 
 os.makedirs(DEST_DIR, exist_ok=True)
 
-def exec_gossip(container: Container):
-      try:
-            res = container.exec_run("bash -c 'cd /app && ./entrypoint.sh'", user="root")
-            print(f"  ✅ Started gossip in {container.name}")
-      except Exception as e:
-            print(f"  ⚠️ Failed in {container.name}: {e}")
-      return res.output
-
-
-def start_gossip(container_list:list[Container]) -> None:
+def start_gossip(container_list:list[Container]):
       """starts the gossip protocol by running the ./entrypoint.sh command on all containers
 
       :param container_list: list of all the container nodes on my gns3 project
       :type container_list: list[Container]
       """
       # Step 1: Start gossip
-      sender = container_list[0]
       for container in container_list:
-            time.sleep(1)
+            time.sleep(2)
             print(f"→ Starting gossip sequence in {container.name}")
-            res = exec_gossip(container)
-            print(res)
-      #exec_gossip(sender)
+            try:
+                  container.exec_run("bash -c 'cd /app && ./entrypoint.sh'", user="root")
+                  print(f"  ✅ Started gossip in {container.name}")
+            except Exception as e:
+                  print(f"  ⚠️ Failed in {container.name}: {e}")
 
-def find_node_idx(container: Container) -> str:
-      # Get push_config.toml
-      config_result = container.exec_run("cat /app/push_config.toml", user="root")
-      config_content = config_result.output.decode(errors="ignore")
-
-      # Extract NODE_IDX (e.g. NODE_IDX = 1)
-      match = re.search(r"NODE_IDX\s*=\s*(\S+)", config_content)
-      node_idx = match.group(1).strip() if match else container.name
-      return str(node_idx)
-
-
-def fetch_rename_logs(container: Container) -> None:
+def fetch_rename_logs(container: Container):
       """fetches the log file in a given container and stores it in the corresponding directory
       renaming is based on the content of the push_config.toml file
 
@@ -74,7 +56,13 @@ def fetch_rename_logs(container: Container) -> None:
       """
       print(f"→ Fetching log and config from {container.name}")
 
-      node_idx = find_node_idx(container)
+      # Get push_config.toml
+      config_result = container.exec_run("cat /app/push_config.toml", user="root")
+      config_content = config_result.output.decode(errors="ignore")
+
+      # Extract NODE_IDX (e.g. NODE_IDX = 1)
+      match = re.search(r"NODE_IDX\s*=\s*(\S+)", config_content)
+      node_idx = match.group(1).strip() if match else container.name
       print(f"  NODE_IDX = {node_idx}")
 
       # Get log content
@@ -88,7 +76,7 @@ def fetch_rename_logs(container: Container) -> None:
             print(f"  ✅ Saved {dest_path}")
 
 
-def run_gossip_sequence(wait_seconds: int = 60) -> None:
+def run_gossip_sequence(wait_seconds: int = 60):
       """runs the full gossip sequence for 60 seconds then fetch all data
 
       :param wait_seconds: amount of time to wait in between the launch of all entrypoints and the fetch of the data, defaults to 60

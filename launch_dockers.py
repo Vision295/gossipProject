@@ -1,5 +1,7 @@
+from json import load
 import docker
 from gns3fy import Gns3Connector, Project, Node
+from load_simulation import *
 
 def get_id(nameId:str) -> str:
       """get id from retriever map
@@ -50,9 +52,9 @@ class DockerEdit:
                   )) 
 
       def run_cmd_on_each_node(self, cmd:str):
+            for container in self.dockerContainers:
+                  container.exec_run(cmd, user="root")
+            
 
-            """
-            self.dockerClient.containers.get()
-            exec_result = container.exec_run(command)
-            """
-            ...
+      def run_gossip_sequence(self, wait_seconds: int = 60):
+            run_gossip_sequence(wait_seconds)

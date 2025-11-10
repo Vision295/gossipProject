@@ -13,3 +13,12 @@ Basic info on the current project
 intent : parameters to generate the topology
 retrieval_maps : to retrieve the correspondin nodes based on a generated topology
 exp_count : counts the number of experiences done per type
+
+
+## TODO
+      - Make all topology generation
+      - Vary the performances using different link type
+      - Make experiences using UDP or TCP
+
+## DONE
+      - Fix : load the number 1 last
