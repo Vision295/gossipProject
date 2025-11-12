@@ -1,7 +1,7 @@
 from json import load
 import docker
 from gns3fy import Gns3Connector, Project, Node
-from load_simulation import *
+from load_simulation_multiprocessing import *
 
 def get_id(nameId:str) -> str:
       """get id from retriever map
