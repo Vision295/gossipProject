@@ -135,7 +135,7 @@ class TopologyGenerator:
 
             # update switch and pc types based on intent
             self.switch_name  = "Ethernet switch"     if "Ethernet switch"    in self.intent else "router"
-            self.pc_name      = "gossip_env"          if "gossip_env"         in self.intent else "VPCS"
+            self.pc_name      = "gossip_env"          if "gossip_env"         in self.intent else "mygossip"
 
             # get templates
             self.pc_template_base         = get_node_template_base(server, self.project_id, self.pc_name) 
@@ -187,7 +187,7 @@ class TopologyGenerator:
                         "environment": "\n".join([
                         f"PACKET_SIZE=1500",
                         f"NODE_IDX={self.pc_count}",
-                        "PORT=8300",
+                        f"PORT={8300+self.pc_count}",
                         f"NEIGHBORS={self.neighborListToStr}",
                         "MAX_BLOCK=5",
                         "BLOCK_GEN_TIME=1000",
