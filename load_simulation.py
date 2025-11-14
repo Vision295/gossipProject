@@ -16,10 +16,10 @@ def new_experience(experience_type:str) -> dict:
       """
 
       # Read current number and update it
-      with open("exp_count.json", "r") as f:
+      with open("json/exp_count.json", "r") as f:
             data = json.load(f)
             data[experience_type] += 1
-      with open("exp_count.json", "w") as f:
+      with open("json/exp_count.json", "w") as f:
             json.dump(data, f)
             return data
 

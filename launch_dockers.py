@@ -1,4 +1,3 @@
-from json import load
 import docker
 from gns3fy import Gns3Connector, Project, Node
 from load_simulation_multiprocessing import *
