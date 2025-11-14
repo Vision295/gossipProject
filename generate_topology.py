@@ -334,14 +334,14 @@ class TopologyGenerator:
             for index, switch in enumerate(self.switchs):
                  data[f"{switch.name} : {switch.node_id}"] = list(map(lambda x: f"{x.name} : {x.node_id}", self.pcs[index]))
 
-            with open("retrieval_map.json", "w") as f:
+            with open("json/retrieval_map.json", "w") as f:
                   json.dump(data, f, indent=6)
       
 
 
 
 # Open and read a JSON file
-with open("intent.json", "r") as file:
+with open("json/intent.json", "r") as file:
     data = json.load(file)  # parses JSON into a Python dict or list
 
 topo = TopologyGenerator(TopologyType.FULL_MESH, data, "testdocker")
