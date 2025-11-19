@@ -1,6 +1,6 @@
 import docker
 from gns3fy import Gns3Connector, Project, Node
-from load_simulation_multiprocessing import *
+from load_simulation import run_gossip_sequence
 
 def get_id(nameId:str) -> str:
       """get id from retriever map
