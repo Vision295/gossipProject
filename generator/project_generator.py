@@ -2,9 +2,12 @@ import json
 from gns3fy import Gns3Connector, Project, Link, Node
 import ipaddress
 from typing import Set
-from enum import Enum
 from math import sqrt
+from enum import Enum
 
+class Protocol(Enum):
+    UDP=1
+    TCP=2
 
 PortNumber = int        # TODO
 NodeDict = dict         # TODO
@@ -52,6 +55,8 @@ class ProjectGenerator:
             self.switch_count = 0
             self.pc_count     = 0
 
+            self.protocol = Protocol.UDP if self.intent["protocol"] == "udp" else Protocol.TCP
+
             # init the list of pcs and switchs
             self.switchs, self.pcs, self.links = [], [], []
 
@@ -59,8 +64,6 @@ class ProjectGenerator:
             self.neighborListToStr = ""
             self.set_ip_list()
             self.gen_position()
-
-
 
       def get_all_used_ports(self, node:Node) -> None | Set[PortNumber]:
             """gets all the ports connected to a node from project (requires the project to be openned)
@@ -99,7 +102,6 @@ class ProjectGenerator:
                         return p  # first free port
             # if no port available
             return None
-
 
       def set_link_template_base(self, filter:None | FilterDict=None):
             """generate a template for link creation
@@ -172,6 +174,7 @@ class ProjectGenerator:
                         'BLOCK_FILE="block_50KB"',
                         "ONLY_PUSH=false",
                         "F_OUT=3"
+                        f"PROTOCOL={'udp' if self.protocol == Protocol.UDP else 'tcp'}"
                         ])
                   }
             }

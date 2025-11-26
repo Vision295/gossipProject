@@ -9,7 +9,9 @@ class TopologyType(Enum):
       CURRENT_MESH = 0
       FULL_MESH = 1
       BUS = 2
-      CLUSTERING = 3
+      CLUSTERED = 3
+      RANDOM = 4
+      HIERARCHICAL = 5
       
 class TopologyGenerator(ProjectGenerator):
       """Class to generate different topologies"""
