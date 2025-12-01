@@ -1,6 +1,26 @@
 {
-      "Ethernet switch": 10,
-      "gossip_env2": 50,
-      "ip_range": "172.19.0.100/24",
-      "protocol": "udp"
+      "Sfullmesh": {
+            "Ethernet switch": 3,
+            "gossiptcpudp": 15,
+            "ip_range": "172.19.0.100/24",
+            "protocol": "",
+            "mesh": "fullmesh",
+            "links": {}
+      },
+      "Mfullmesh": {
+            "Ethernet switch": 10,
+            "gossiptcpudp": 50,
+            "ip_range": "172.19.0.100/24",
+            "protocol": "",
+            "mesh": "fullmesh",
+            "links": {}
+      },
+      "Lfullmesh": {
+            "Ethernet switch": 20,
+            "gossiptcpudp": 100,
+            "ip_range": "172.19.0.100/24",
+            "protocol": "",
+            "mesh": "fullmesh",
+            "links": {}
+      }
 }
