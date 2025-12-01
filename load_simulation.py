@@ -5,6 +5,15 @@ import os
 import re
 import json
 
+
+"""
+      Try to automate the experiences : 
+            - load all docker containers then shutdown then reload
+            - change the links to see differences in convergence time
+            - change the number of pcs
+            - change the size of the file
+"""
+
 def new_experience(experience_type:str) -> dict:
       """we consider the count of all experiences to differenciate the fetches of 
       data in different directories
@@ -88,6 +97,7 @@ def fetch_rename_logs(container: Container):
       with open(dest_path, "w") as f:
             f.write(log_content)
             print(f"  ✅ Saved {dest_path}")
+
 
 
 def run_gossip_sequence(wait_seconds: int = 60):
