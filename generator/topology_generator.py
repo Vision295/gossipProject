@@ -41,6 +41,7 @@ class TopologyGenerator(ProjectGenerator):
 
       def gen_clustered_mesh(self):
             self.gen_base()
+            self.add_switch_link(self,switchs[0], self.switchs[-1])
             for index, value in enumerate(self.switchs[:-1]):
                   self.add_switch_link(value, self.switchs[index+1])
 

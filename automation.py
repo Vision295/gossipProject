@@ -4,14 +4,14 @@ from gns3fy import Gns3Connector, Project, Node
 import time
 from generator import *
 
+
+# What i could miss : block size, bandwidth limitation
+# TODO: make the set of link constraints
+# TODO: make the clustered 1 and 2 work 
+# TODO: rum everything for 1 mesh 1 size
+
 SWITCH_TEMPLATE_NAME = "Ethernet switch"
 PC_TEMPLATE_NAME = "gossiptcpudp"
-# Connect to GNS3 server
-server = Gns3Connector(url="http://localhost:3080")
-
-
-
-
 
 mesh_info = {
      TopologyType.FULL_MESH: {"S": (3, 15), "M": (10, 50), "L": (20, 100),"XL": (40, 200)},
@@ -44,6 +44,8 @@ intent_base = {
 
 
 
+# Connect to GNS3 server
+server = Gns3Connector(url="http://localhost:3080")
 
 project = Project(
     name="my_empty_project",
