@@ -42,7 +42,7 @@ class ProjectGenerator:
 
             # update switch and pc types based on intent
             self.switch_name  = "Ethernet switch"     if "Ethernet switch"    in self.intent else "router"
-            self.pc_name      = "gossip_env"          if "gossip_env"         in self.intent else "gossip_env2"
+            self.pc_name      = "gossiptcpudp"          if "gossiptcpudp"         in self.intent else "gossip_env2"
 
             # get templates
             self.set_switch_template_base() 
@@ -55,7 +55,7 @@ class ProjectGenerator:
             self.switch_count = 0
             self.pc_count     = 0
 
-            self.protocol = Protocol.UDP if self.intent["protocol"] == "udp" else Protocol.TCP
+            self.protocol = Protocol.UDP if self.intent["protocol"] == "UDP" else Protocol.TCP
 
             # init the list of pcs and switchs
             self.switchs, self.pcs, self.links = [], [], []
@@ -134,7 +134,7 @@ class ProjectGenerator:
                   "properties":{
                         "ports_mapping": [
                               {"name": f"Ethernet{i}", "port_number": i, "type": "access", "vlan": 1}
-                              for i in range(30)
+                              for i in range(60)
                         ]
                   }
             }
@@ -173,8 +173,8 @@ class ProjectGenerator:
                         "PULL_INTERVAL=4000",
                         'BLOCK_FILE="block_50KB"',
                         "ONLY_PUSH=false",
-                        "F_OUT=3"
-                        f"PROTOCOL={'udp' if self.protocol == Protocol.UDP else 'tcp'}"
+                        "F_OUT=3",
+                        f"PROTOCOL='{'UDP' if self.protocol == Protocol.UDP else 'TCP'}'"
                         ])
                   }
             }
