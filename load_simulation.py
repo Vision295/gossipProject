@@ -182,7 +182,7 @@ def run_experiment(filename, data):
 
       full_cleanup(name)
 
-      topo = TopologyGenerator(TopologyType.BUS, data, name)
+      topo = TopologyGenerator(TopologyType.FULL_MESH, data, name)
       server = Gns3Connector("http://localhost:3080")
       project = Project(name=name, connector=server)
       dest_dir = new_experience("full_mesh")

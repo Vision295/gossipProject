@@ -1,6 +1,6 @@
 {
-      "Open vSwitch": 3,
-      "gossiptcpudp": 9,
+      "Open vSwitch": 10,
+      "gossiptcpudp": 50,
       "ip_range": "172.19.0.100/24",
       "protocol": "TCP",
       "block_name": "block_50KB",
