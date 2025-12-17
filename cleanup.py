@@ -39,9 +39,14 @@ def safe_cleanup_project(project):
 
     print("🧹 Cleanup complete!")
 
-# Example usage
-if __name__ == "__main__":
+def full_cleanup(name):
     server = Gns3Connector("http://localhost:3080")
-    project = Project(name="fullmesh", connector=server)
+    project = Project(name=name, connector=server)
     project.get()
     safe_cleanup_project(project)
+    return project
+
+
+# Example usage
+if __name__ == "__main__":
+      full_cleanup("testing")

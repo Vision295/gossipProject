@@ -1,26 +1,11 @@
 {
-      "Sfullmesh": {
-            "Ethernet switch": 3,
-            "gossiptcpudp": 15,
-            "ip_range": "172.19.0.100/24",
-            "protocol": "",
-            "mesh": "fullmesh",
-            "links": {}
-      },
-      "Mfullmesh": {
-            "Ethernet switch": 10,
-            "gossiptcpudp": 50,
-            "ip_range": "172.19.0.100/24",
-            "protocol": "",
-            "mesh": "fullmesh",
-            "links": {}
-      },
-      "Lfullmesh": {
-            "Ethernet switch": 20,
-            "gossiptcpudp": 100,
-            "ip_range": "172.19.0.100/24",
-            "protocol": "",
-            "mesh": "fullmesh",
-            "links": {}
-      }
+      "Open vSwitch": 3,
+      "gossiptcpudp": 9,
+      "ip_range": "172.19.0.100/24",
+      "protocol": "TCP",
+      "block_name": "block_50KB",
+      "max_block": 20,
+      "block_gen_time": 1000,
+      "f_out": 3,
+      "bandwidth_mbps": 1000
 }

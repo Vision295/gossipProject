@@ -4,10 +4,11 @@ import ipaddress
 from typing import Set
 from math import sqrt
 from enum import Enum
+import requests
 
 class Protocol(Enum):
-    UDP=1
-    TCP=2
+    UDP="UDP"
+    TCP="TCP"
 
 PortNumber = int        # TODO
 NodeDict = dict         # TODO
@@ -41,8 +42,8 @@ class ProjectGenerator:
             self.intent = intent
 
             # update switch and pc types based on intent
-            self.switch_name  = "Ethernet switch"     if "Ethernet switch"    in self.intent else "router"
-            self.pc_name      = "gossiptcpudp"          if "gossiptcpudp"         in self.intent else "gossip_env2"
+            self.switch_name  = "Open vSwitch"    if "Open vSwitch"    in self.intent else "Open vSwitch"
+            self.pc_name      = "gossip"          if "gossip"         in self.intent else "gossiptcpudp"
 
             # get templates
             self.set_switch_template_base() 
@@ -55,10 +56,15 @@ class ProjectGenerator:
             self.switch_count = 0
             self.pc_count     = 0
 
-            self.protocol = Protocol.UDP if self.intent["protocol"] == "UDP" else Protocol.TCP
+            # self.protocol = Protocol.UDP if self.intent["protocol"] == "UDP" else Protocol.TCP
+            self.protocol = self.intent["protocol"]
+            self.block_name = self.intent["block_name"]
+            self.max_block = self.intent["max_block"]
+            self.f_out = self.intent["f_out"]
+            self.block_gen_time = self.intent["block_gen_time"]
 
             # init the list of pcs and switchs
-            self.switchs, self.pcs, self.links = [], [], []
+            self.switchs, self.pcs, self.switch_links = [], [], []
 
             # gets the list of neighbors to pass as argument on creation of pc
             self.neighborListToStr = ""
@@ -85,7 +91,7 @@ class ProjectGenerator:
                               used_ports.add(n["port_number"])
             return used_ports
 
-      def get_free_port(self, node:Node):
+      def get_free_port(self, index:int):
             """get the first free port (resquires the project to be open)
 
             :param node: node from a project 
@@ -95,15 +101,14 @@ class ProjectGenerator:
             :return: number of the first available port
             :rtype: None | Unknown
             """
-            if not node.ports: return None
-            used_ports = self.get_all_used_ports(node)
-            for p in node.ports:
-                  if p["port_number"] not in used_ports:
-                        return p  # first free port
-            # if no port available
-            return None
+            ports = self.switch_links[index]
+            for i in range(16):
+                  if i not in ports:
+                        self.switch_links[index].append(i)
+                        return i
+            return 0
 
-      def set_link_template_base(self, filter:None | FilterDict=None):
+      def set_link_template_base(self):
             """generate a template for link creation
 
             :param filter: filters to a link (delay, ...), defaults to None
@@ -114,7 +119,6 @@ class ProjectGenerator:
                   "connector": self.server,
                   "link_type":"ethernet",  
                   "link_id":None, 
-                  "filters": filter
             }
 
       def set_pc_template_base(self):
@@ -132,10 +136,10 @@ class ProjectGenerator:
                   "template": self.switch_name,
                   "locked": False,
                   "properties":{
-                        "ports_mapping": [
-                              {"name": f"Ethernet{i}", "port_number": i, "type": "access", "vlan": 1}
-                              for i in range(60)
-                        ]
+                        # "ports_mapping": [
+                        #       {"name": f"Ethernet{i}", "port_number": i, "type": "access", "vlan": 1}
+                        #       for i in range(60)
+                        # ]
                   }
             }
 
@@ -149,7 +153,7 @@ class ProjectGenerator:
             
             network = ipaddress.ip_network(ip_range, strict=False)
             start_ip = network.network_address  # first IP in the network
-            ip_list = [str(start_ip + i) for i in range(self.total_number_pc)]
+            ip_list = [str(start_ip + i) for i in range(self.total_number_pc + 1)][1:]
 
             self.neighborListToStr = ",".join(ip_list)
 
@@ -163,18 +167,18 @@ class ProjectGenerator:
             """
             return {
                   "properties": {
-                        "environment": "\n".join([
-                        f"PACKET_SIZE=1500",
-                        f"NODE_IDX={self.pc_count}",
-                        f"PORT={8300+self.pc_count}",
-                        f"NEIGHBORS={self.neighborListToStr}",
-                        "MAX_BLOCK=5",
-                        "BLOCK_GEN_TIME=1000",
-                        "PULL_INTERVAL=4000",
-                        'BLOCK_FILE="block_50KB"',
-                        "ONLY_PUSH=false",
-                        "F_OUT=3",
-                        f"PROTOCOL='{'UDP' if self.protocol == Protocol.UDP else 'TCP'}'"
+                              "environment": "\n".join([
+                              f"PACKET_SIZE=1500",
+                              f"NODE_IDX={self.pc_count}",
+                              f"PORT={8300+self.pc_count}",
+                              f"NEIGHBORS={self.neighborListToStr}",
+                              f"MAX_BLOCK={self.max_block}",
+                              f"BLOCK_GEN_TIME={self.block_gen_time}",
+                              "PULL_INTERVAL=4000",
+                              f'BLOCK_FILE="{self.block_name}"',
+                              "ONLY_PUSH=false",
+                              f"F_OUT={self.f_out}",
+                              f'PROTOCOL="{self.protocol}"'
                         ])
                   }
             }
@@ -201,9 +205,11 @@ class ProjectGenerator:
             self.switchs[-1].create()
             self.switch_count += 1
             # foreach switch we have to create self.totoal_number_pc // self.totoal_number_switch pcs
+            self.switch_links.append([])
             for j in range(self.total_number_pc // self.total_number_switch):
                   self.add_pc(i, j, all_clusters)
-                  self.add_pc_link(i, j)
+                  switch_port = self.get_free_port(i)
+                  self.add_link(self.pcs[i][j], 0, self.switchs[i], switch_port)
 
       def add_pc(self, i:int, j:int, all_clusters:list[tuple[int, int]]):
             """adds a pc to the pc list and creates it each pc node is based on :
@@ -232,27 +238,7 @@ class ProjectGenerator:
             self.pcs[i][-1].create()
             self.pc_count += 1
       
-      def add_pc_link(self, i:int, portNumber:PortNumber):
-            """creates a link between a pc and a switch 
-
-            :param i: switch i
-            :type i: int
-            :param j: pc j (which corresponds to the port j of the switch)
-            :type j: PortNumber
-            """
-            link_addition = {
-                  "nodes":[
-                        {"node_id": self.switchs[-1].node_id, "adapter_number":0, "port_number": portNumber},
-                        {"node_id": self.pcs[i][-1].node_id, "adapter_number": 0, "port_number": 0},
-                  ],
-            }
-            self.links[i].append(Link(
-                  **link_addition,
-                  **self.link_template_base,
-            ))
-            self.links[i][-1].create()
-      
-      def add_switch_link(self, switch_a:Node, switch_b:Node):
+      def add_link(self, node_a:Node, pa:int, node_b:Node, pb:int):
             """adds a link between two switches this function is seperated because 
             we have to iterate over each switches only once
 
@@ -261,22 +247,35 @@ class ProjectGenerator:
             :param switch_b: switch a
             :type switch_b: Node
             """
-            pa = self.get_free_port(switch_a)
-            pb = self.get_free_port(switch_b)
-            if not pa: return
-            if not pb: return
-            link_addition = {
-                  "nodes":[
-                        {"node_id": switch_a.node_id, "adapter_number": pa["adapter_number"], "port_number": pa["port_number"]},
-                        {"node_id": switch_b.node_id, "adapter_number": pb["adapter_number"], "port_number": pb["port_number"]},
-                  ],
+            self.project.get()
+            self.project.create_link(
+                  node_a.name,
+                  f"eth{pa}",
+                  node_b.name,
+                  f"eth{pb}"
+            )
+
+      def apply_filter_to_last_link(self, filter):
+            self.project.get_links()
+            link = self.project.links[-1]  # the most recently created link
+
+            self.apply_filter(link, filter)
+
+      def apply_filter(self, link, filters):
+            link.filters = filters
+            data = {
+                  "project_id": link.project_id,
+                  "link_id": link.link_id,
+                  "link_type": link.link_type,
+                  "nodes": link.nodes,
+                  "filters": link.filters  # apply filters here
             }
 
-            self.links[-1].append(Link(
-                  **link_addition,
-                  **self.link_template_base
-            ))
-            self.links[-1][-1].create()
+            url = f"http://localhost:3080/v2/projects/{link.project_id}/links/{link.link_id}"
+            resp = requests.put(url, json=data)
+            resp.raise_for_status()  # raise error if failed
+            link.get()
+            
 
       def gen_position(self):
             self.base_position = []
@@ -295,11 +294,9 @@ class ProjectGenerator:
             # connect all switches in a full mesh
             for i in range(self.total_number_switch):
                   self.pcs.append([])
-                  self.links.append([])
                   self.add_switch(i, self.base_position)
             
             # loop through all switches to create a full mesh
-            self.links.append([])
             self.project.get_links()
 
       def gen_retrieval_map(self, file_name):
