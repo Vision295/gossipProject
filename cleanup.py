@@ -1,52 +1,56 @@
 import time
 from gns3fy import Gns3Connector, Project
 
+FILENAME = "testing"
+
 def safe_cleanup_project(project):
-    print(f"🔹 Cleaning up project: {project.name}")
+      """ cleanup the full GNS3 project : remove all the nodes and links """
 
-    # Fetch latest data
-    project.get()
-    project.get_nodes()
-    project.get_links()
+      print(f"🔹 Cleaning up project: {project.name}")
 
-    # Delete all links first
-    print(f"Deleting {len(project.links)} links...")
-    for link in project.links:
-        try:
-            link.delete()
-            print(f"  ✅ Deleted link {link.link_id}")
-            time.sleep(0.2)
-        except Exception as e:
-            print(f"  ⚠️ Failed to delete link {link.link_id}: {e}")
+      # Fetch latest data
+      project.get()
+      project.get_nodes()
+      project.get_links()
 
-    # Stop project before node deletion
-    try:
-        project.stop()
-        print("⏹ Project stopped.")
-    except Exception:
-        print("⚠️ Project was not running or already stopped.")
-    time.sleep(0.5)
+      # Delete all links first
+      print(f"Deleting {len(project.links)} links...")
+      for link in project.links:
+            try:
+                  link.delete()
+                  print(f"  ✅ Deleted link {link.link_id}")
+                  time.sleep(0.2)
+            except Exception as e:
+                  print(f"  ⚠️ Failed to delete link {link.link_id}: {e}")
 
-    # Delete all nodes
-    print(f"Deleting {len(project.nodes)} nodes...")
-    for node in project.nodes:
-        try:
-            node.delete()
-            print(f"  ✅ Deleted node {node.name}")
-            time.sleep(0.5)
-        except Exception as e:
-            print(f"  ⚠️ Failed to delete node {node.name}: {e}")
+            # Stop project before node deletion
+            try:
+                  project.stop()
+                  print("⏹ Project stopped.")
+            except Exception:
+                  print("⚠️ Project was not running or already stopped.")
+                  time.sleep(0.5)
 
-    print("🧹 Cleanup complete!")
+      # Delete all nodes
+      print(f"Deleting {len(project.nodes)} nodes...")
+      for node in project.nodes:
+            try:
+                  node.delete()
+                  print(f"  ✅ Deleted node {node.name}")
+                  time.sleep(0.5)
+            except Exception as e:
+                  print(f"  ⚠️ Failed to delete node {node.name}: {e}")
+
+      print("🧹 Cleanup complete!")
+
 
 def full_cleanup(name):
-    server = Gns3Connector("http://localhost:3080")
-    project = Project(name=name, connector=server)
-    project.get()
-    safe_cleanup_project(project)
-    return project
+      """cleanup + connection"""
+      server = Gns3Connector("http://localhost:3080")
+      project = Project(name=name, connector=server)
+      project.get()
+      safe_cleanup_project(project)
+      return project
 
 
-# Example usage
-if __name__ == "__main__":
-      full_cleanup("testing")
+if __name__ == "__main__" : full_cleanup(FILENAME)

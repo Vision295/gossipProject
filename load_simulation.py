@@ -1,25 +1,47 @@
-from tokenize import tabsize
+from tkinter import W
 import docker
 from docker.models.containers import Container
 import time
 import os
 import re
 import json
-from fetch_data import fetch_data
+
+from useless.fetch_data import fetch_data
 from generator import *
 from cleanup import full_cleanup
 from gns3fy import Gns3Connector, Project 
 
 
 """
-      Try to automate the experiences : 
-            - load all docker containers then shutdown then reload
-            - change the links to see differences in convergence time
-            - change the number of pcs
-            - change the size of the file
+Try to automate the realization of one single experience : 
+      - creating all nodes within the project
+      - start all the node 
+      - reduce their bandwidth
+      - load the gossip protocol on all nodes
+      - shutdown every node after X seconds of execution
 """
-HOME = "/run/media/theophile/Windows/Users/theop/Documents/_Perso/_Etudes/_INSA/_4TC1/networksProject/code/results"
-def new_experience(experience_type:str) -> dict:
+HOME_DIR = "/run/media/theophile/Windows/Users/theop/Documents/_Perso/_Etudes/_INSA/_4TC1/networksProject/code/results"
+
+# bw reduction commands (depends on the type of nodes)
+VSWITCH = {
+      "nb_interfaces":16,
+      "bw_reduction": [
+            lambda i, bandwidth: f"ovs-vsctl set interface eth{i} ingress_policing_rate={bandwidth}",
+            lambda i: f"ovs-vsctl set interface eth{i} ingress_policing_burst=0",
+      ]
+}
+GOSSIP_CONTAINER = {
+      "nb_interfaces":1,
+      "bw_reduction": [
+            lambda _: "tc qdisc add dev eth0 root handle 1: htb default 1",
+            lambda bandwidth: f"tc class add dev eth0 parent 1: classid 1:1 htb rate {bandwidth}mbit ceil {bandwidth}mbit",
+      ],
+      "gossip_seq": "bash -c 'cd /app && ./entrypoint.sh'"
+}
+
+is_switch = lambda container: container.exec_run("which ovs-vsctl", user="root").exit_code == 0
+
+def new_experience(experience_type:str) -> str:
       """we consider the count of all experiences to differenciate the fetches of 
       data in different directories
       
@@ -36,7 +58,7 @@ def new_experience(experience_type:str) -> dict:
       with open("json/exp_count.json", "w") as f:
             json.dump(exp, f)
 
-      dest_dir = os.path.expanduser(HOME + f"/{exp[experience_type]}") 
+      dest_dir = os.path.expanduser(HOME_DIR + f"/{exp[experience_type]}") 
       os.makedirs(dest_dir, exist_ok=True)
       with open("json/intent.json", "r") as f:
             data = json.load(f)
@@ -45,39 +67,41 @@ def new_experience(experience_type:str) -> dict:
       return dest_dir
 
 
-def run_bw_reduction(bandwidth:float=50):
+def run_bw_reduction(bandwidth:float=50, pc_template=GOSSIP_CONTAINER, switch_template=VSWITCH):
+      """ apply a per docker container bandwidth reduction to size bandwidth Mbps"""
+      # connect to client and list all running docker containers
       client = docker.from_env()
       container_list:list[Container] = client.containers.list(filters={"status": "running"})
       for container in container_list:
             if is_switch(container):
                   print(f"→ Start the BW reduction on SWITCH {container.name}")
-                  # container.exec_run(script, user="root", detach=True)
-                  for i in range(0, 15):
+                  # apply bw reduction on all network interfaces (if switch : 16 interfaces)
+                  for i in range(VSWITCH["nb_interfaces"]):
                         try:
-                              container.exec_run(f"ovs-vsctl set interface eth{i} ingress_policing_rate={bandwidth}", user="root", detach=True)
+                              container.exec_run(switch_template["bw_reduction"][0](i, bandwidth), user="root", detach=True)
                               time.sleep(0.01)
-                              container.exec_run(f"ovs-vsctl set interface eth{i} ingress_policing_burst=0", user="root", detach=True)
+                              container.exec_run(switch_template["bw_reduction"][1](i), user="root", detach=True)
                               time.sleep(0.01)
                               print(f"  ✅ Started gossip in {container.name}")
                         except Exception as e:
                               print(f"  ⚠️ Failed in {container.name}: {e}")
             else:
+                  # apply bw reduction on all network interfaces (if pc : 1 interface)
                   try:
-                        container.exec_run(f"tc qdisc add dev eth0 root handle 1: htb default 1", user="root", detach=True)
+                        container.exec_run(pc_template["bw_reduction"][0](), user="root", detach=True)
                         time.sleep(0.01)
-                        container.exec_run(f"tc class add dev eth0 parent 1: classid 1:1 htb rate {bandwidth}mbit ceil {bandwidth}mbit", user="root", detach=True)
+                        container.exec_run(pc_template["bw_reduction"][1](bandwidth), user="root", detach=True)
                         time.sleep(0.01)
                         print(f"  ✅ Started gossip in {container.name}")
                   except Exception as e:
                         print(f"  ⚠️ Failed in {container.name}: {e}")
 
-def start_gossip(container_list:list[Container], bw:int):
+def start_gossip(container_list:list[Container], pc_template=GOSSIP_CONTAINER, bw:int):
       """starts the gossip protocol by running the ./entrypoint.sh command on all containers
 
       :param container_list: list of all the container nodes on my gns3 project
       :type container_list: list[Container]
       """
-      # Step 1: Start gossip
       sender = container_list[0]
       for container in container_list:
             if is_switch(container):
@@ -87,30 +111,17 @@ def start_gossip(container_list:list[Container], bw:int):
             if node_idx != 0:
                   try:
                         print(f"→ Starting gossip sequence in {container.name}")
-                        # container.exec_run(f"tc qdisc add dev eth0 root handle 1: htb default 1", user="root", detach=True)
-                        # time.sleep(0.5)
-                        # container.exec_run(f"tc class add dev eth0 parent 1: classid 1:1 htb rate {bw}mbit ceil {bw}mbit", user="root", detach=True)
-                        # time.sleep(0.5)
-                        container.exec_run("bash -c 'cd /app && ./entrypoint.sh'", user="root", detach=True)
+                        container.exec_run(pc_template["gossip_seq"], user="root", detach=True)
                         print(f"  ✅ Started gossip in {container.name}")
                   except Exception as e:
                         print(f"  ⚠️ Failed in {container} curl http://localhost:3080/v2/version.name: {e}")
             else:
                   sender = container
       try:
-            # container.exec_run(f"tc qdisc add dev eth0 root handle 1: htb default 1", user="root", detach=True)
-            # time.sleep(0.5)
-            # sender.exec_run(f"tc class add dev eth0 parent 1: classid 1:1 htb rate {bw}mbit ceil {bw}mbit", user="root", detach=True)
-            # time.sleep(0.5)
-            sender.exec_run("bash -c 'cd /app && ./entrypoint.sh'", user="root", detach=True)
+            sender.exec_run(pc_template["gossip_seq"], user="root", detach=True)
             print(f"  ✅ Started gossip in {sender.name}")
       except Exception as e:
             print(f"  ⚠️ Failed in {sender.name}: {e}")
-
-
-is_switch = lambda container: container.exec_run("which ovs-vsctl", user="root").exit_code == 0
-
-
 
 
 def find_node_idx(container):

@@ -1,5 +1,7 @@
 from gns3fy import Gns3Connector, Project
 
+"""File to get all the project info in detail (list of nodes, type, statue, project ID, path, ...)"""
+
 def get_project_info():
       # 1️⃣ Connect to your GNS3 server
       gns3_server = Gns3Connector("http://localhost:3080")

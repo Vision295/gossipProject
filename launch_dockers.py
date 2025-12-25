@@ -5,6 +5,9 @@ from gns3fy import Gns3Connector, Project, Node
 from load_simulation import run_gossip_sequence
 import re
 
+
+"""This file is not used yet : implementation of docker container manipulation using OOP"""
+
 def get_id(nameId:str) -> str:
       """get id from retriever map
 
@@ -79,7 +82,6 @@ class DockerEdit:
 
 
       def fetch_rename_logs(self):
-
             """fetches the log file in a given container and stores it in the corresponding directory
             renaming is based on the content of the push_config.toml file
 
@@ -98,13 +100,11 @@ class DockerEdit:
       def run_gossip_sequence(self, wait_seconds: int = 60):
             self.start_gossip()
             return
-            self.fetch_rename_logs()
-            run_gossip_sequence(wait_seconds)
 
 
-with open( "json/fullmesh_retrieval_map.json", "r") as f:
-      retrieval = json.load(f)
+# with open( "json/fullmesh_retrieval_map.json", "r") as f:
+#       retrieval = json.load(f)
 
-dock = DockerEdit("testTCP", retrieval)
-dock.retrieve_topology()
-dock.run_gossip_sequence(20)
+# dock = DockerEdit("testTCP", retrieval)
+# dock.retrieve_topology()
+# dock.run_gossip_sequence(20)
